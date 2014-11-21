@@ -55,6 +55,9 @@ int main(int argc, char** argv)
     IplImage* rawImage = 0, *yuvImage = 0; //yuvImage is for codebook method
     IplImage *ImaskCodeBook = 0,*ImaskCodeBookCC = 0;
     CvCapture* capture = 0;
+	
+
+	//cvRect ROIArea = cvRect(0,0,200,200);
 
     int c, n, nframes = 0;
     int nframesToLearnBG = 300;
@@ -122,30 +125,57 @@ int main(int argc, char** argv)
         {
             // CODEBOOK METHOD ALLOCATION
             yuvImage = cvCloneImage(rawImage);
-            ImaskCodeBook = cvCreateImage( cvGetSize(rawImage), IPL_DEPTH_8U, 1 );
-            ImaskCodeBookCC = cvCreateImage( cvGetSize(rawImage), IPL_DEPTH_8U, 1 );
+
+			float w = yuvImage->width;
+			cvSetImageROI(yuvImage, cvRect(w-250,0,250,250));
+			IplImage *tmp = cvCreateImage(cvGetSize(yuvImage),yuvImage->depth,yuvImage->nChannels);
+			cvCopy(yuvImage, tmp, NULL);
+			cvResetImageROI(yuvImage);
+			yuvImage = cvCloneImage(tmp);
+
+			ImaskCodeBook = cvCreateImage( cvGetSize(yuvImage), IPL_DEPTH_8U, 1 );
+            ImaskCodeBookCC = cvCreateImage( cvGetSize(yuvImage), IPL_DEPTH_8U, 1 );
+
+            //ImaskCodeBook = cvCreateImage( cvGetSize(rawImage), IPL_DEPTH_8U, 1 );
+            //ImaskCodeBookCC = cvCreateImage( cvGetSize(rawImage), IPL_DEPTH_8U, 1 );
             cvSet(ImaskCodeBook,cvScalar(255));
             
-            cvNamedWindow( "Raw", 1 );
-            cvNamedWindow( "ForegroundCodeBook",1);
-            cvNamedWindow( "CodeBook_ConnectComp",1);
+			cvNamedWindow("Raw",CV_WINDOW_AUTOSIZE);
+            cvNamedWindow( "ForegroundCodeBook",CV_WINDOW_AUTOSIZE);
+            cvNamedWindow( "CodeBook_ConnectComp",CV_WINDOW_AUTOSIZE);
         }
 
         // If we've got an rawImage and are good to go:                
         if( rawImage )
         {
 			cvFlip(rawImage, NULL, 1);
-            cvCvtColor( rawImage, yuvImage, CV_BGR2YCrCb );//YUV For codebook method
-            //This is where we build our background model
-            if( !pause && nframes-1 < nframesToLearnBG  )
-			{
+            float w = rawImage->width;
+
+			//Dibujar contorno
+			 cvLine(rawImage, cv::Point (w-250,0), cv::Point (w-250,250), CV_RGB(255,0,0),1, CV_AA, 0) ;
+			 cvLine(rawImage, cv::Point (w-250,250), cv::Point (w,250), CV_RGB(255,0,0),1, CV_AA, 0) ;
+			//
+			if(nframes - 1 < nframesToLearnBG){
 				char buffer [33];
 				itoa (nframesToLearnBG - nframes - 1,buffer,10);
-
-                cvBGCodeBookUpdate( model, yuvImage );
 				CvFont font2;
 				cvInitFont(&font2, CV_FONT_HERSHEY_SIMPLEX, 1.0, 1.0, 0, 3, CV_AA);
-				cvPutText(rawImage, buffer, cvPoint(50, 50), &font2, cvScalar(0, 0, 255, 0)); 
+				cvPutText(rawImage, buffer, cvPoint(50, 50), &font2, cvScalar(0, 0, 255, 0));
+			}
+
+			cvSetImageROI(rawImage, cvRect(w-250,0,250,250));
+			IplImage *temp = cvCreateImage(cvGetSize(rawImage),rawImage->depth,rawImage->nChannels);
+			
+			cvCvtColor( rawImage, yuvImage, CV_BGR2YCrCb );
+			//YUV For codebook method
+			
+			//This is where we build our background model
+            if( !pause && nframes-1 < nframesToLearnBG  )
+			{
+				
+
+                cvBGCodeBookUpdate( model, yuvImage );
+				 
 			}
 
             if( nframes-1 == nframesToLearnBG  )
@@ -165,6 +195,7 @@ int main(int argc, char** argv)
                 
             }
             //Display
+			cvResetImageROI(rawImage);
             cvShowImage( "Raw", rawImage );
             cvShowImage( "ForegroundCodeBook",ImaskCodeBook);
             
@@ -322,6 +353,7 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 	CvSeq* first_contour = NULL;
 	CvSeq* maxitem=NULL;
 	double area=0,areamax=0;
+	double longitud = 0;
 	int maxn=0;
 	int Nc = cvFindContours(
 	img_8uc1,
@@ -398,11 +430,17 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 				//fprintf(stderr,"cvCvtSeqToArray\n");  
 				cvCvtSeqToArray(defects,defectArray, CV_WHOLE_SEQ); 
 				
+				longitud = 0;
+
 				// Draw marks for all defects.  
 				for(int i=0; i<nomdef; i++)  
 				{  
 					printf(" defect depth for defect %d %f \n",i,defectArray[i].depth);
-					cvLine(img_8uc3, *(defectArray[i].start), *(defectArray[i].depth_point),CV_RGB(255,255,0),1, CV_AA, 0 );  
+					cvLine(img_8uc3, *(defectArray[i].start), *(defectArray[i].depth_point),CV_RGB(255,255,0),1, CV_AA, 0 ); 
+
+					cv::Point diff = (defectArray[i].start) - (defectArray[i].depth_point);
+					longitud = sqrt((double)diff.x*(double)diff.x + (double)diff.y*(double)diff.y);
+
 					cvCircle( img_8uc3, *(defectArray[i].depth_point), 5, CV_RGB(0,0,164), 2, 8,0);  
 					cvCircle( img_8uc3, *(defectArray[i].start), 5, CV_RGB(255,0,0), 2, 8,0);  
 					cvLine(img_8uc3, *(defectArray[i].depth_point), *(defectArray[i].end),CV_RGB(0,0,0),1, CV_AA, 0 );   
