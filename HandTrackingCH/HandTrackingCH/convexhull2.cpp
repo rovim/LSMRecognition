@@ -1,4 +1,3 @@
-//convexhull2.cpp
 
 // Background average sample code done with averages and done with codebooks
 /* 
@@ -10,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <string> 
 
 //VARIABLES for CODEBOOK METHOD:
 CvBGCodeBookModel* model = 0;
@@ -134,10 +134,19 @@ int main(int argc, char** argv)
         // If we've got an rawImage and are good to go:                
         if( rawImage )
         {
+			cvFlip(rawImage, NULL, 1);
             cvCvtColor( rawImage, yuvImage, CV_BGR2YCrCb );//YUV For codebook method
             //This is where we build our background model
             if( !pause && nframes-1 < nframesToLearnBG  )
+			{
+				char buffer [33];
+				itoa (nframesToLearnBG - nframes - 1,buffer,10);
+
                 cvBGCodeBookUpdate( model, yuvImage );
+				CvFont font2;
+				cvInitFont(&font2, CV_FONT_HERSHEY_SIMPLEX, 1.0, 1.0, 0, 3, CV_AA);
+				cvPutText(rawImage, buffer, cvPoint(50, 50), &font2, cvScalar(0, 0, 255, 0)); 
+			}
 
             if( nframes-1 == nframesToLearnBG  )
                 cvBGCodeBookClearStale( model, model->t/2 );
@@ -226,88 +235,206 @@ int main(int argc, char** argv)
     cvDestroyWindow( "CodeBook_ConnectComp");
     return 0;
 }
+/*
+void  detect(IplImage* img_8uc1,IplImage* img_8uc3) 
+{
+	//cvNamedWindow( "aug", 1 );
+
+	//cvThreshold( img_8uc1, img_edge, 128, 255, CV_THRESH_BINARY );
+	CvMemStorage* storage = cvCreateMemStorage();
+	CvSeq* first_contour = NULL;
+	CvSeq* maxitem=NULL;
+	double area=0,areamax=0;
+	int maxn=0;
+	int Nc = cvFindContours(
+							img_8uc1,
+							storage,
+							&first_contour,
+							sizeof(CvContour),
+							CV_RETR_LIST // Try all four values and see what happens
+							);
+	int n=0;
+	//printf( "Total Contours Detected: %d\n", Nc );
+
+	if(Nc>0)
+	{
+		for( CvSeq* c=first_contour; c!=NULL; c=c->h_next ) 
+		{     
+			//cvCvtColor( img_8uc1, img_8uc3, CV_GRAY2BGR );
+
+			area=cvContourArea(c,CV_WHOLE_SEQ );
+
+			if(area>areamax)
+			{
+				areamax=area;
+				maxitem=c;
+				maxn=n;
+			}
+			n++;
+		}
+		
+		if(areamax>5000)
+		{
+			CvPoint pt0;
+
+			CvMemStorage* storage1 = cvCreateMemStorage();
+			CvSeq* ptseq = cvCreateSeq( CV_SEQ_KIND_GENERIC|CV_32SC2, sizeof(CvContour), sizeof(CvPoint), storage1 );
+			CvSeq* hull;
+
+			for(int i = 0; i < maxitem->total; i++ )
+			{   
+				CvPoint* p = CV_GET_SEQ_ELEM( CvPoint, maxitem, i );
+				pt0.x = p->x;
+				pt0.y = p->y;
+				cvSeqPush( ptseq, &pt0 );
+			}
+			hull = cvConvexHull2( ptseq, 0, CV_CLOCKWISE, 0 );
+			int hullcount = hull->total;
 
 
 
-void  detect(IplImage* img_8uc1,IplImage* img_8uc3) {
-    
+			pt0 = **CV_GET_SEQ_ELEM( CvPoint*, hull, hullcount - 1 );
+
+			for(int i = 0; i < hullcount; i++ )
+			{
+
+				CvPoint pt = **CV_GET_SEQ_ELEM( CvPoint*, hull, i );
+				cvLine( img_8uc3, pt0, pt, CV_RGB( 0, 255, 0 ), 1, CV_AA, 0 );
+				pt0 = pt;
+			}
+			
+			cvReleaseMemStorage( &storage );
+			cvReleaseMemStorage( &storage1 );
+			//return 0;
+		}
+	}
+}*/
+
+
+void  detect(IplImage* img_8uc1,IplImage* img_8uc3) 
+{  
     
 //cvNamedWindow( "aug", 1 );
 
 
 //cvThreshold( img_8uc1, img_edge, 128, 255, CV_THRESH_BINARY );
-CvMemStorage* storage = cvCreateMemStorage();
-CvSeq* first_contour = NULL;
-CvSeq* maxitem=NULL;
-double area=0,areamax=0;
-int maxn=0;
-int Nc = cvFindContours(
-img_8uc1,
-storage,
-&first_contour,
-sizeof(CvContour),
-CV_RETR_LIST // Try all four values and see what happens
-);
-int n=0;
-//printf( "Total Contours Detected: %d\n", Nc );
+	CvMemStorage* storage = cvCreateMemStorage();
+	CvSeq* first_contour = NULL;
+	CvSeq* maxitem=NULL;
+	double area=0,areamax=0;
+	int maxn=0;
+	int Nc = cvFindContours(
+	img_8uc1,
+	storage,
+	&first_contour,
+	sizeof(CvContour),
+	CV_RETR_LIST // Try all four values and see what happens
+	);
+	int n=0;
+	//printf( "Total Contours Detected: %d\n", Nc );
 
-if(Nc>0)
-{
-for( CvSeq* c=first_contour; c!=NULL; c=c->h_next ) 
-{
-     
-//cvCvtColor( img_8uc1, img_8uc3, CV_GRAY2BGR );
+	if(Nc>0)
+	{
+		for( CvSeq* c=first_contour; c!=NULL; c=c->h_next ) 
+		{     
+			//cvCvtColor( img_8uc1, img_8uc3, CV_GRAY2BGR );
+			area=cvContourArea(c,CV_WHOLE_SEQ );
 
-area=cvContourArea(c,CV_WHOLE_SEQ );
+			if(area>areamax)
+			{
+				areamax=area;
+				maxitem=c;
+				maxn=n;
+			}
+			n++;
+		}
+		
+		CvMemStorage* storage3 = cvCreateMemStorage(0);
+		//if (maxitem) maxitem = cvApproxPoly( maxitem, sizeof(maxitem), storage3, CV_POLY_APPROX_DP, 3, 1 );  
+		
+		if(areamax>5000)
+		{
+			maxitem = cvApproxPoly( maxitem, sizeof(CvContour), storage3, CV_POLY_APPROX_DP, 10, 1 );
+			CvPoint pt0;
+			
+			CvMemStorage* storage1 = cvCreateMemStorage(0);
+			CvMemStorage* storage2 = cvCreateMemStorage(0);
+			CvSeq* ptseq = cvCreateSeq( CV_SEQ_KIND_GENERIC|CV_32SC2, sizeof(CvContour), sizeof(CvPoint), storage1 );
+			CvSeq* hull;
+			CvSeq* defects;
 
-if(area>areamax)
-{areamax=area;
-maxitem=c;
-maxn=n;
+			for(int i = 0; i < maxitem->total; i++ )
+			{   
+				CvPoint* p = CV_GET_SEQ_ELEM( CvPoint, maxitem, i );
+				pt0.x = p->x;
+				pt0.y = p->y;
+				cvSeqPush( ptseq, &pt0 );
+			}
+			hull = cvConvexHull2( ptseq, 0, CV_CLOCKWISE, 0 );
+			int hullcount = hull->total;
+        
+			defects= cvConvexityDefects(ptseq,hull,storage2  );
+
+			//printf(" defect no %d \n",defects->total);
+			CvConvexityDefect* defectArray;  
+			
+			int j=0;  
+			//int m_nomdef=0;
+			// This cycle marks all defects of convexity of current contours.  
+			for(;defects;defects = defects->h_next)  
+			{  
+				int nomdef = defects->total; // defect amount  
+				//outlet_float( m_nomdef, nomdef );  
+				//printf(" defect no %d \n",nomdef);
+				
+				if(nomdef == 0)  
+                continue;  
+				
+				// Alloc memory for defect set.     
+				//fprintf(stderr,"malloc\n");  
+				defectArray = (CvConvexityDefect*)malloc(sizeof(CvConvexityDefect)*nomdef);  
+              
+				// Get defect set.  
+				//fprintf(stderr,"cvCvtSeqToArray\n");  
+				cvCvtSeqToArray(defects,defectArray, CV_WHOLE_SEQ); 
+				
+				// Draw marks for all defects.  
+				for(int i=0; i<nomdef; i++)  
+				{  
+					printf(" defect depth for defect %d %f \n",i,defectArray[i].depth);
+					cvLine(img_8uc3, *(defectArray[i].start), *(defectArray[i].depth_point),CV_RGB(255,255,0),1, CV_AA, 0 );  
+					cvCircle( img_8uc3, *(defectArray[i].depth_point), 5, CV_RGB(0,0,164), 2, 8,0);  
+					cvCircle( img_8uc3, *(defectArray[i].start), 5, CV_RGB(255,0,0), 2, 8,0);  
+					cvLine(img_8uc3, *(defectArray[i].depth_point), *(defectArray[i].end),CV_RGB(0,0,0),1, CV_AA, 0 );   
+				} 
+				char txt[]="0";
+				txt[0]='0'+nomdef-1;
+				CvFont font;
+				cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 1.0, 1.0, 0, 5, CV_AA);
+				cvPutText(img_8uc3, txt, cvPoint(50, 50), &font, cvScalar(0, 0, 255, 0)); 
+				
+				j++;  
+				
+				// Free memory.   
+				free(defectArray);  
+			} 
+
+			pt0 = **CV_GET_SEQ_ELEM( CvPoint*, hull, hullcount - 1 );
+
+			for(int i = 0; i < hullcount; i++ )
+			{
+
+				CvPoint pt = **CV_GET_SEQ_ELEM( CvPoint*, hull, i );
+				cvLine( img_8uc3, pt0, pt, CV_RGB( 0, 255, 0 ), 1, CV_AA, 0 );
+				pt0 = pt;
+			}
+			
+			cvReleaseMemStorage( &storage );
+			cvReleaseMemStorage( &storage1 );
+			cvReleaseMemStorage( &storage2 );
+			cvReleaseMemStorage( &storage3 );
+			//return 0;
+		}
+	}
 }
 
-
-
-n++;
-
-
-}
-
-
-if(areamax>5000)
-{
-CvPoint pt0;
-
-CvMemStorage* storage1 = cvCreateMemStorage();
-CvSeq* ptseq = cvCreateSeq( CV_SEQ_KIND_GENERIC|CV_32SC2, sizeof(CvContour),
-                                     sizeof(CvPoint), storage1 );
-        CvSeq* hull;
-
-        for(int i = 0; i < maxitem->total; i++ )
-        {   CvPoint* p = CV_GET_SEQ_ELEM( CvPoint, maxitem, i );
-            pt0.x = p->x;
-            pt0.y = p->y;
-            cvSeqPush( ptseq, &pt0 );
-        }
-        hull = cvConvexHull2( ptseq, 0, CV_CLOCKWISE, 0 );
-        int hullcount = hull->total;
-
-
-
-        pt0 = **CV_GET_SEQ_ELEM( CvPoint*, hull, hullcount - 1 );
-
-        for(int i = 0; i < hullcount; i++ )
-        {
-
-            CvPoint pt = **CV_GET_SEQ_ELEM( CvPoint*, hull, i );
-            cvLine( img_8uc3, pt0, pt, CV_RGB( 0, 255, 0 ), 1, CV_AA, 0 );
-            pt0 = pt;
-        }
-
-
-cvReleaseMemStorage( &storage );
-cvReleaseMemStorage( &storage1 );
-//return 0;
-}
-}
-}
