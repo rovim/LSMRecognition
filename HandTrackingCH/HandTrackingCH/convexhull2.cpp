@@ -508,7 +508,14 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 				{
 					radio = (double)maxDefectPos.x / (double)maxDefectPos.y;
 					if (nomdef>0)
+					{
+
 						printf(" Longitud %g \n NomDef %i \n radio %g \n",longitud, nomdef, radio);
+					FILE *fp;
+					fp=fopen("archivo.txt", "a");
+					fprintf(fp, "Longitud %g \n NomDef %i \n radio %g \n",longitud, nomdef, radio);
+					fclose (fp);
+					}
 					else
 						printf("No hay defectos");
 					

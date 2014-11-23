@@ -1,0 +1,25 @@
+Longitud 395.488 
+ NomDef 4 
+ radio 1.33544 
+
+Longitud 699.498 
+ NomDef 5 
+ radio 1.34731 
+Longitud 557.942 
+ NomDef 4 
+ radio 2 
+Longitud 657.488 
+ NomDef 4 
+ radio 1.17073 
+Longitud 536.695 
+ NomDef 4 
+ radio 1.28125 
+Longitud 371.399 
+ NomDef 3 
+ radio 1.44937 
+Longitud 487.028 
+ NomDef 4 
+ radio 0.875 
+Longitud 305.39 
+ NomDef 3 
+ radio 1.22703 
