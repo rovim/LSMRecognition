@@ -1,4 +1,4 @@
-﻿Build started 23/11/2014 02:38:59 p.m..
+﻿Build started 23/11/2014 02:43:37 p.m..
      1>Project "C:\Users\Rosaura\Documents\Visual Studio 2010\Projects\ComputerVision\HandTrackingCH\HandTrackingCH\HandTrackingCH.vcxproj" on node 2 (build target(s)).
      1>InitializeBuildStatus:
          Creating "Debug\HandTrackingCH.unsuccessfulbuild" because "AlwaysCreate" was specified.
@@ -37,4 +37,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:02.39
+Time Elapsed 00:00:02.25

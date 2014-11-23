@@ -513,7 +513,7 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 						printf(" Longitud %g \n NomDef %i \n radio %g \n",longitud, nomdef, radio);
 					FILE *fp;
 					fp=fopen("archivo.txt", "a");
-					fprintf(fp, "Longitud %g \n NomDef %i \n radio %g \n",longitud, nomdef, radio);
+					fprintf(fp, "\n%g\n%i\n%g\n",longitud, nomdef, radio);
 					fclose (fp);
 					}
 					else
