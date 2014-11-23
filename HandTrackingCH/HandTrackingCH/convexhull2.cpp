@@ -10,14 +10,20 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <algorithm>
+#include <fstream>
 
 //VARIABLES for CODEBOOK METHOD:
 CvBGCodeBookModel* model = 0;
 const int NCHANNELS = 3;
 bool ch[NCHANNELS]={true,true,true}; // This sets what channels should be adjusted for background bounds
-
+bool saveLength = false;
 
 void  detect(IplImage* img_8uc1,IplImage* img_8uc3);
+
+double getMin(double a, double b, double c, double d);
+double getMax(double a, double b, double c, double d);
+double longBtwnPoints (CvPoint a, CvPoint b);
+
 
 void help(void)
 {
@@ -210,6 +216,9 @@ int main(int argc, char** argv)
         //Else check for user input
         switch( c )
         {
+		case 'c':
+			saveLength = true;
+			break;
         case 'h':
             help();
             break;
@@ -258,6 +267,9 @@ int main(int argc, char** argv)
             }
             break;
         }
+
+		if (c != 'c')
+			saveLength=false;
     }		
     
     cvReleaseCapture( &capture );
@@ -354,6 +366,7 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 	CvSeq* maxitem=NULL;
 	double area=0,areamax=0;
 	double longitud = 0;
+	double radio = 0;
 	int maxn=0;
 	int Nc = cvFindContours(
 	img_8uc1,
@@ -395,13 +408,13 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 			CvSeq* hull;
 			CvSeq* defects;
 
-			CvPoint* minDefectPos = new CvPoint ();
-			minDefectPos->x = 1000000;
-			minDefectPos->y = 1000000;
+			CvPoint minDefectPos;;
+			minDefectPos.x = 1000000;
+			minDefectPos.y = 1000000;
 
-			CvPoint* maxDefectPos = new CvPoint ();
-			maxDefectPos->x = 0;
-			maxDefectPos->y = 0;			
+			CvPoint maxDefectPos;
+			maxDefectPos.x = 0;
+			maxDefectPos.y = 0;			
 			
 
 			for(int i = 0; i < maxitem->total; i++ )
@@ -422,6 +435,9 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 			int j=0;  
 			//int m_nomdef=0;
 			// This cycle marks all defects of convexity of current contours.  
+
+			longitud = 0;
+
 			for(;defects;defects = defects->h_next)  
 			{  
 				int nomdef = defects->total; // defect amount  
@@ -439,56 +455,64 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 				//fprintf(stderr,"cvCvtSeqToArray\n");  
 				cvCvtSeqToArray(defects,defectArray, CV_WHOLE_SEQ); 
 				
-				longitud = 0;
+				
 
+				
 
+				
 
 				// Draw marks for all defects.  
 				for(int i=0; i<nomdef; i++)  
 				{  
-					printf(" defect depth for defect %d %f \n",i,defectArray[i].depth);
-					cvLine(img_8uc3, *(defectArray[i].start), *(defectArray[i].depth_point),CV_RGB(255,255,0),1, CV_AA, 0 ); 
+					CvPoint startP;
+					startP.x = defectArray[i].start->x;
+					startP.y = defectArray[i].start->y;
+
+					CvPoint depthP;
+					depthP.x = defectArray[i].depth_point->x;
+					depthP.y = defectArray[i].depth_point->y;
+
+					CvPoint endP;
+					endP.x = defectArray[i].end->x;
+					endP.y = defectArray[i].end->y;
+
+					
 
 					//obtener minimo y maximo
 
-					using std::min;
+					minDefectPos.x = getMin (startP.x, depthP.x, endP.x, minDefectPos.x);
+					minDefectPos.y = getMin (startP.y, depthP.y, endP.y, minDefectPos.y);
 
-					double se = min (defectArray[i].start->x, defectArray[i].end->x);
-					double depth = defectArray[i].depth_point->x;
-					double mini = min(se, depth);
-					double defectPos = (minDefectPos->x); 
-					minDefectPos->x =   min(mini, defectPos);
-
-					se = min (defectArray[i].start->y, defectArray[i].end->y);
-					depth = defectArray[i].depth_point->y;
-					mini = min(se, depth);
-					defectPos = (minDefectPos->y); 
-					minDefectPos->y =   min(mini, defectPos);
-
-					using std::max;
-
-					se = max (defectArray[i].start->x, defectArray[i].end->x);
-					depth = defectArray[i].depth_point->x;
-					mini = max(se, depth);
-					defectPos = (maxDefectPos->x); 
-					maxDefectPos->x =   max(mini, defectPos);
-
-					se = max (defectArray[i].start->y, defectArray[i].end->y);
-					depth = defectArray[i].depth_point->y;
-					mini = max(se, depth);
-					defectPos = (maxDefectPos->y); 
-					maxDefectPos->y =   max(mini, defectPos);
+					maxDefectPos.x = getMax (startP.x, depthP.x, endP.x, maxDefectPos.x);
+					maxDefectPos.y = getMax (startP.y, depthP.y, endP.y, maxDefectPos.y);					
 					
 					//fin obtener minimo y maximo
-					
-					cv::Point diff = (defectArray[i].start) - (defectArray[i].depth_point);
-					longitud = sqrt((double)diff.x*(double)diff.x + (double)diff.y*(double)diff.y);
+					if (saveLength)
+					{
+						longitud += longBtwnPoints(startP, depthP);
+						longitud += longBtwnPoints(depthP, endP);
+						
+					}
+					//printf(" defect depth for defect %d %f \n",i,defectArray[i].depth);
+					cvLine(img_8uc3, startP, depthP, CV_RGB(255,255,0),1, CV_AA, 0 ); 
 
-					cvCircle( img_8uc3, *(defectArray[i].depth_point), 5, CV_RGB(0,0,164), 2, 8,0);  
-					cvCircle( img_8uc3, *(defectArray[i].start), 5, CV_RGB(255,0,0), 2, 8,0);  
-					cvCircle( img_8uc3, *(defectArray[i].end), 5, CV_RGB(0,255,0), 2, 8,0);  
-					cvLine(img_8uc3, *(defectArray[i].depth_point), *(defectArray[i].end),CV_RGB(0,0,0),1, CV_AA, 0 );   
+					
+					cvCircle( img_8uc3, depthP, 5, CV_RGB(0,0,164), 2, 8,0);  
+					cvCircle( img_8uc3, startP, 5, CV_RGB(255,0,0), 2, 8,0);  
+					cvCircle( img_8uc3, endP, 5, CV_RGB(0,255,0), 2, 8,0);  
+
+					cvLine(img_8uc3, depthP, endP,CV_RGB(0,0,0),1, CV_AA, 0 );   
 				} 
+
+				if (saveLength)
+				{
+					radio = (double)maxDefectPos.x / (double)maxDefectPos.y;
+					if (nomdef>0)
+						printf(" Longitud %g \n NomDef %i \n radio %g \n",longitud, nomdef, radio);
+					else
+						printf("No hay defectos");
+					
+				}
 				char txt[]="0";
 				txt[0]='0'+nomdef-1;
 				CvFont font;
@@ -511,11 +535,12 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 				pt0 = pt;
 			}
 
+			
 
-			cvLine( img_8uc3, *minDefectPos, cvPoint( (maxDefectPos->x), (minDefectPos->y)), CV_RGB( 2500, 0, 0 ), 1, CV_AA, 0 );
-			cvLine( img_8uc3,  cvPoint( (maxDefectPos->x), (minDefectPos->y)), *maxDefectPos, CV_RGB( 2500, 0, 0 ), 1, CV_AA, 0 );
-			cvLine( img_8uc3, *maxDefectPos, cvPoint( (minDefectPos->x), (maxDefectPos->y)), CV_RGB( 2500, 0, 0 ), 1, CV_AA, 0 );
-			cvLine( img_8uc3, cvPoint( (minDefectPos->x), (maxDefectPos->y)), *minDefectPos, CV_RGB( 2500, 0, 0 ), 1, CV_AA, 0 );
+			cvLine( img_8uc3, minDefectPos, cvPoint( (maxDefectPos.x), (minDefectPos.y)), CV_RGB( 2500, 0, 0 ), 1, CV_AA, 0 );
+			cvLine( img_8uc3,  cvPoint( (maxDefectPos.x), (minDefectPos.y)), maxDefectPos, CV_RGB( 2500, 0, 0 ), 1, CV_AA, 0 );
+			cvLine( img_8uc3, maxDefectPos, cvPoint( (minDefectPos.x), (maxDefectPos.y)), CV_RGB( 2500, 0, 0 ), 1, CV_AA, 0 );
+			cvLine( img_8uc3, cvPoint( (minDefectPos.x), (maxDefectPos.y)), minDefectPos, CV_RGB( 2500, 0, 0 ), 1, CV_AA, 0 );
 			
 			cvReleaseMemStorage( &storage );
 			cvReleaseMemStorage( &storage1 );
@@ -526,3 +551,25 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 	}
 }
 
+double getMin (double a, double b, double c, double d)
+{
+	using std::min;
+	
+	return min (a, (min (b, min (c,d))));
+}
+
+double getMax (double a, double b, double c, double d)
+{
+	using std::max;
+	
+	return max (a, (max (b, max (c,d))));
+}
+
+double longBtwnPoints (CvPoint a, CvPoint b)
+{
+	double x = (a.x - b.x);
+	x = x*x;
+	double y = (a.y - b.y);
+	y = y*y;
+	return sqrt (x + y);	
+}
