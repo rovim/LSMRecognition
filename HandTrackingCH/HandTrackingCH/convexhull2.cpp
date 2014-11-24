@@ -23,6 +23,7 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3);
 double getMin(double a, double b, double c, double d);
 double getMax(double a, double b, double c, double d);
 double longBtwnPoints (CvPoint a, CvPoint b);
+char identificaGesto (double longitud, int numDef, double radio);
 
 
 void help(void)
@@ -364,6 +365,7 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 	CvMemStorage* storage = cvCreateMemStorage();
 	CvSeq* first_contour = NULL;
 	CvSeq* maxitem=NULL;
+	char resultado [] = " ";
 	double area=0,areamax=0;
 	double longitud = 0;
 	double radio = 0;
@@ -504,12 +506,24 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 					cvLine(img_8uc3, depthP, endP,CV_RGB(0,0,0),1, CV_AA, 0 );   
 				} 
 
+				if (nomdef>0)
+				{
+						resultado [0] = identificaGesto (longitud, nomdef, radio);
+						if (resultado[0] !=' ')
+							printf ("Gesto identificado (%c) \n", resultado[0]);
+				}
+
 				if (saveLength)
 				{
 					radio = (double)maxDefectPos.x / (double)maxDefectPos.y;
 					if (nomdef>0)
 					{
-
+						printf ("_______________________\n");
+						resultado [0] = identificaGesto (longitud, nomdef, radio);
+						if (resultado[0] !=' ')
+							printf ("Gesto identificado (%c) \n", resultado[0]);
+						else
+							printf ("No se identifico ningun gesto\n");
 						printf(" Longitud %g \n NomDef %i \n radio %g \n",longitud, nomdef, radio);
 					FILE *fp;
 					fp=fopen("archivo.txt", "a");
@@ -518,13 +532,19 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 					}
 					else
 						printf("No hay defectos");
-					
+					printf ("_______________________\n");
 				}
+				/*
 				char txt[]="0";
 				txt[0]='0'+nomdef-1;
 				CvFont font;
 				cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 1.0, 1.0, 0, 5, CV_AA);
-				cvPutText(img_8uc3, txt, cvPoint(50, 50), &font, cvScalar(0, 0, 255, 0)); 
+				cvPutText(img_8uc3, txt, cvPoint(50, 50), &font, cvScalar(0, 0, 255, 0)); */
+
+				CvFont font;
+				cvInitFont(&font, CV_FONT_HERSHEY_SIMPLEX, 1.0, 1.0, 0, 5, CV_AA);
+				if (resultado!= NULL)
+					cvPutText(img_8uc3, resultado, cvPoint(50, 50), &font, cvScalar(0, 0, 255, 0));
 				
 				j++;  
 				
@@ -557,6 +577,131 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 		}
 	}
 }
+
+
+
+double rangosLongitudes [20][2] =
+	{
+		{62.4868, 82.4998}, //A
+		{113.35, 192.293}, //C
+		{80.9532, 123.694}, //E		
+		{124.458, 157.178}, //U		
+		{149.073, 185.217}, //1
+		
+		{111.876, 270.255}, //B
+		{297.609, 361.505}, //I
+		{289.027, 367.171}, //R
+		
+		{269.164, 409.923}, //D
+		{219.531, 318.41}, //F
+		{422.244, 578.86}, //G
+		{491.106, 577.238}, //L
+		{485.78, 552.635}, //P
+		{422.017, 469.986}, //V, 2
+		{419.554, 560.382}, //W
+
+		{458.719, 653.324}, //H		
+		{571.653, 647.173}, //4
+
+		{705.86, 788.248}, //Y
+		{660.127, 819.448}, //3
+
+		{856.959, 952.936}, //5
+	};
+
+	double rangosRadio [20][2] =
+	{
+		{0.717557, 1.03252}, //A
+		{0.548387, 1.83495}, //B
+		{0.60733, 1.83495}, //C
+		{0.564516, 1.16667}, //D
+		{0.540373, 0.8}, //E
+		{1.2037, 1.43571}, //F
+		{0.693548, 1.10714}, //G
+		{0.923387, 1.19903}, //H
+		{0.810484, 0.931452}, //I
+		{0.802419, 1}, //L
+		{0.798387, 0.903226}, //P
+		{0.765182, 1.01531}, //R
+		{0.872727, 1.50725}, //U
+		{0.80597, 1.00508}, //V, 2
+		{0.810484, 1.38462}, //W
+		{0.943548, 1.03766}, //Y
+		{1.12, 1.66116}, //1
+		{0.842742, 0.903226}, //3
+		{0.864629, 1.1016}, //4
+		{0.830645, 0.91129}, //5
+	};
+
+
+
+char identificaGesto (double longitud, int numDef, double radio)
+{
+	if (saveLength)
+	{
+		int l=5;
+	}
+
+	switch (numDef)
+	{
+	case 1: //0-4
+		if (longitud > rangosLongitudes[0][0] && longitud < rangosLongitudes[0][1])
+			return 'a';		
+		if (longitud > rangosLongitudes[2][0] && longitud < rangosLongitudes[2][1])
+			return 'e';
+		if (longitud > rangosLongitudes[3][0] && longitud < rangosLongitudes[3][1])
+			return 'u';
+		if (longitud > rangosLongitudes[4][0] && longitud < rangosLongitudes[4][1])
+			return '1';
+		if (longitud > rangosLongitudes[1][0] && longitud < rangosLongitudes[1][1])
+			return 'c';
+		break;
+	case 2://5-7
+		if (longitud > rangosLongitudes[5][0] && longitud < rangosLongitudes[5][1])
+			return 'b';
+		if (longitud > rangosLongitudes[7][0] && longitud < rangosLongitudes[7][1])
+			return 'r';
+		if (longitud > rangosLongitudes[6][0] && longitud < rangosLongitudes[6][1])
+			return 'i';
+		break;
+	case 3://8-14			
+		if (longitud > rangosLongitudes[9][0] && longitud < rangosLongitudes[9][1])
+			return 'f';
+		if (longitud > rangosLongitudes[8][0] && longitud < rangosLongitudes[8][1])
+			return 'd';		
+		if (longitud > rangosLongitudes[14][0] && longitud < rangosLongitudes[14][1])
+			return 'w';
+		if (longitud > rangosLongitudes[13][0] && longitud < rangosLongitudes[13][1])
+			return 'v';
+		if (longitud > rangosLongitudes[10][0] && longitud < rangosLongitudes[10][1])
+			return 'g';
+		if (longitud > rangosLongitudes[12][0] && longitud < rangosLongitudes[12][1])
+			return 'p';		
+		if (longitud > rangosLongitudes[11][0] && longitud < rangosLongitudes[11][1])
+			return 'l';
+		break;
+	case 4://15,16
+		if (longitud > rangosLongitudes[15][0] && longitud < rangosLongitudes[15][1])
+			return 'h';
+		if (longitud > rangosLongitudes[16][0] && longitud < rangosLongitudes[16][1])
+			return '4';
+		break;
+	case 5://17,18
+		if (longitud > rangosLongitudes[17][0] && longitud < rangosLongitudes[17][1])
+			return 'y';
+		if (longitud > rangosLongitudes[18][0] && longitud < rangosLongitudes[18][1])
+			return '3';
+		break;
+	case 6://19;
+		if (longitud > rangosLongitudes[19][0] && longitud < rangosLongitudes[19][1])
+			return '5';
+		break;
+	}
+
+	return ' ';
+}
+
+
 
 double getMin (double a, double b, double c, double d)
 {
