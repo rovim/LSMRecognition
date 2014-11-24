@@ -12,6 +12,9 @@
 #include <algorithm>
 #include <fstream>
 
+
+
+
 //VARIABLES for CODEBOOK METHOD:
 CvBGCodeBookModel* model = 0;
 const int NCHANNELS = 3;
@@ -58,8 +61,12 @@ void help(void)
 //
 int main(int argc, char** argv)
 {
+	CvMemStorage* mstrg = cvCreateMemStorage();
+	CvSeq* contours = 0; 
+	CvSeq* contours2 = 0; 
+
     const char* filename = 0;
-    IplImage* rawImage = 0, *yuvImage = 0; //yuvImage is for codebook method
+    IplImage* rawImage = 0, *yuvImage = 0, *borde = 0; //yuvImage is for codebook method
     IplImage *ImaskCodeBook = 0,*ImaskCodeBookCC = 0;
     CvCapture* capture = 0;
 	
@@ -130,6 +137,8 @@ int main(int argc, char** argv)
         //First time:
         if( nframes == 1 && rawImage )
         {
+			borde = cvLoadImage("Borde.png",0);
+
             // CODEBOOK METHOD ALLOCATION
             yuvImage = cvCloneImage(rawImage);
 
@@ -158,6 +167,8 @@ int main(int argc, char** argv)
 			cvFlip(rawImage, NULL, 1);
             float w = rawImage->width;
 
+			cvFindContours(borde,mstrg,&contours,sizeof(CvContour),CV_RETR_EXTERNAL);
+               
 			//Dibujar contorno
 			 cvLine(rawImage, cv::Point (w-250,0), cv::Point (w-250,250), CV_RGB(255,0,0),1, CV_AA, 0) ;
 			 cvLine(rawImage, cv::Point (w-250,250), cv::Point (w,250), CV_RGB(255,0,0),1, CV_AA, 0) ;
@@ -168,6 +179,9 @@ int main(int argc, char** argv)
 				CvFont font2;
 				cvInitFont(&font2, CV_FONT_HERSHEY_SIMPLEX, 1.0, 1.0, 0, 3, CV_AA);
 				cvPutText(rawImage, buffer, cvPoint(50, 50), &font2, cvScalar(0, 0, 255, 0));
+
+				 
+                
 			}
 
 			cvSetImageROI(rawImage, cvRect(w-250,0,250,250));
@@ -199,6 +213,9 @@ int main(int argc, char** argv)
                 //bwareaopen_(ImaskCodeBookCC,100);
                 cvShowImage( "CodeBook_ConnectComp",ImaskCodeBookCC);
                 detect(ImaskCodeBookCC,rawImage);
+				 if(contours)
+                	cvDrawContours(rawImage,contours, cvScalar(255, 0, 0, 0), cvScalarAll(128), 1 );
+
                 
             }
             //Display
@@ -274,6 +291,7 @@ int main(int argc, char** argv)
     }		
     
     cvReleaseCapture( &capture );
+	cvReleaseMemStorage(&mstrg);
     cvDestroyWindow( "Raw" );
     cvDestroyWindow( "ForegroundCodeBook");
     cvDestroyWindow( "CodeBook_ConnectComp");
@@ -367,7 +385,7 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 	CvSeq* maxitem=NULL;
 	char resultado [] = " ";
 	double area=0,areamax=0;
-	double longitud = 0;
+	double longitudExt = 0, longitudInt =0;
 	double radio = 0;
 	int maxn=0;
 	int Nc = cvFindContours(
@@ -438,7 +456,7 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 			//int m_nomdef=0;
 			// This cycle marks all defects of convexity of current contours.  
 
-			longitud = 0;
+			longitudExt = 0;
 
 			for(;defects;defects = defects->h_next)  
 			{  
@@ -461,11 +479,12 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 
 				
 
-				
+				CvPoint prevDepth;
 
 				// Draw marks for all defects.  
 				for(int i=0; i<nomdef; i++)  
-				{  
+				{  					
+
 					CvPoint startP;
 					startP.x = defectArray[i].start->x;
 					startP.y = defectArray[i].start->y;
@@ -480,6 +499,8 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 
 					
 
+					
+
 					//obtener minimo y maximo
 
 					minDefectPos.x = getMin (startP.x, depthP.x, endP.x, minDefectPos.x);
@@ -491,8 +512,16 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 					//fin obtener minimo y maximo
 					if (saveLength)
 					{
-						longitud += longBtwnPoints(startP, depthP);
-						longitud += longBtwnPoints(depthP, endP);
+						longitudExt += longBtwnPoints(startP, depthP);
+						longitudExt += longBtwnPoints(depthP, endP);
+						/*
+						if (i>0)
+						{
+							prevDepth.x = defectArray[i-1].depth_point->x;
+							prevDepth.y = defectArray[i-1].depth_point->y;
+
+							longitudInt += longBtwnPoints(prevDepth, depthP);
+						}*/
 						
 					}
 					//printf(" defect depth for defect %d %f \n",i,defectArray[i].depth);
@@ -506,12 +535,12 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 					cvLine(img_8uc3, depthP, endP,CV_RGB(0,0,0),1, CV_AA, 0 );   
 				} 
 
-				if (nomdef>0)
+				/*if (nomdef>0)
 				{
-						resultado [0] = identificaGesto (longitud, nomdef, radio);
+						resultado [0] = identificaGesto (longitudExt, nomdef, radio);
 						if (resultado[0] !=' ')
 							printf ("Gesto identificado (%c) \n", resultado[0]);
-				}
+				}*/
 
 				if (saveLength)
 				{
@@ -519,16 +548,20 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 					if (nomdef>0)
 					{
 						printf ("_______________________\n");
-						resultado [0] = identificaGesto (longitud, nomdef, radio);
+						resultado [0] = identificaGesto (longitudExt, nomdef, radio);
 						if (resultado[0] !=' ')
 							printf ("Gesto identificado (%c) \n", resultado[0]);
 						else
 							printf ("No se identifico ningun gesto\n");
-						printf(" Longitud %g \n NomDef %i \n radio %g \n",longitud, nomdef, radio);
-					FILE *fp;
-					fp=fopen("archivo.txt", "a");
-					fprintf(fp, "\n%g\n%i\n%g\n",longitud, nomdef, radio);
-					fclose (fp);
+					
+						printf(" Longitud %g \n NomDef %i \n radio %g \n",longitudExt, nomdef, radio);
+						FILE *fp;
+						fp=fopen("archivo.txt", "a");
+						if (nomdef == 6)
+							fprintf(fp, "\n>>>>>>>5<<<<<<\n%g\n%i\n%g\n",longitudExt, nomdef, radio);
+						else
+							fprintf(fp, "\n%g\n%i\n%g\n",longitudExt, nomdef, radio);
+						fclose (fp);
 					}
 					else
 						printf("No hay defectos");
@@ -582,55 +615,58 @@ void  detect(IplImage* img_8uc1,IplImage* img_8uc3)
 
 double rangosLongitudes [20][2] =
 	{
-		{62.4868, 82.4998}, //A
-		{113.35, 192.293}, //C
+		{119.9845, 132.678}, //C
+		{111.618, 125.84}, //B		
+		{107.678, 147.903}, //U	
 		{80.9532, 123.694}, //E		
-		{124.458, 157.178}, //U		
-		{149.073, 185.217}, //1
 		
-		{111.876, 270.255}, //B
-		{297.609, 361.505}, //I
-		{289.027, 367.171}, //R
+		{159.068, 170.231}, //1	
+		{204.608, 214.504}, //A	
+		{270.763, 304.032}, //V, 2		
+		{226.789, 268.933}, //R	
+		{231.359, 283.933}, //I	
+		{206.197, 295.882}, //D
+
+		{320.363, 343.765}, //F
+		{418.119, 458.506}, //L
+		{403.119, 428.76}, //P
+		{370.451, 428.515}, //W
+		{428.615, 488.56}, //G
 		
-		{269.164, 409.923}, //D
-		{219.531, 318.41}, //F
-		{422.244, 578.86}, //G
-		{491.106, 577.238}, //L
-		{485.78, 552.635}, //P
-		{422.017, 469.986}, //V, 2
-		{419.554, 560.382}, //W
+		{521.035, 584.993}, //H	
+		{480.339, 500.501}, //3
+		{470.011, 521.41}, //Y	
 
-		{458.719, 653.324}, //H		
-		{571.653, 647.173}, //4
-
-		{705.86, 788.248}, //Y
-		{660.127, 819.448}, //3
-
-		{856.959, 952.936}, //5
+		{730.723, 750.827}, //4
+		{800, 952.936}, //5
 	};
 
-	double rangosRadio [20][2] =
+	double rangosRadios [20][2] =
 	{
-		{0.717557, 1.03252}, //A
-		{0.548387, 1.83495}, //B
-		{0.60733, 1.83495}, //C
-		{0.564516, 1.16667}, //D
-		{0.540373, 0.8}, //E
-		{1.2037, 1.43571}, //F
-		{0.693548, 1.10714}, //G
-		{0.923387, 1.19903}, //H
-		{0.810484, 0.931452}, //I
-		{0.802419, 1}, //L
-		{0.798387, 0.903226}, //P
-		{0.765182, 1.01531}, //R
-		{0.872727, 1.50725}, //U
-		{0.80597, 1.00508}, //V, 2
-		{0.810484, 1.38462}, //W
-		{0.943548, 1.03766}, //Y
-		{1.12, 1.66116}, //1
-		{0.842742, 0.903226}, //3
-		{0.864629, 1.1016}, //4
-		{0.830645, 0.91129}, //5
+		{0.562814, 0.664894}, //C
+		{0.508197, 0.57754}, //B		
+		{1.00568, 1.59167}, //U	
+		{0.540373, 0.8}, //E		
+		
+		{1.04712, 1.11173}, //1	
+		{0.467742, 0.487903}, //A	
+		{1.125, 1.41667}, //V, 2		
+		{0.941463, 1.23952}, //R	
+		{0.798387, 0.862903}, //I	
+		{0.580645, 0.866935}, //D
+
+		{0.612903, 0.802419}, //F
+		{0.700405, 0.778226}, //P
+		{0.71371, 0.834677}, //L
+		{0.979487, 1.25}, //W
+		{1.02058, 1.0929}, //G
+		
+		{0.923387, 0.995968}, //H
+		{0.931707, 0.975124}, //3
+		{0.931452, 1}, //Y		
+
+		{0.899194, 0.91129}, //4
+		{0.830645, 0.927419}, //5
 	};
 
 
@@ -644,55 +680,154 @@ char identificaGesto (double longitud, int numDef, double radio)
 
 	switch (numDef)
 	{
-	case 1: //0-4
-		if (longitud > rangosLongitudes[0][0] && longitud < rangosLongitudes[0][1])
-			return 'a';		
-		if (longitud > rangosLongitudes[2][0] && longitud < rangosLongitudes[2][1])
-			return 'e';
-		if (longitud > rangosLongitudes[3][0] && longitud < rangosLongitudes[3][1])
+	case 1: //0-3
+		if (longitud > rangosLongitudes[0][0] && longitud < rangosLongitudes[0][1]) //return 'c';
+		{	
+			if (longitud > rangosLongitudes[1][0] && longitud < rangosLongitudes[1][1])//return 'b';
+			{
+				if (radio > rangosRadios[1][1])
+					return 'c';
+				else 
+					return 'b';			
+			}
+			if (longitud > rangosLongitudes[2][0] && longitud < rangosLongitudes[2][1])//return 'u';
+			{
+				if (radio >= rangosRadios[2][0])
+					return 'u';
+				else 
+					return 'c';			
+			}
+			if (longitud > rangosLongitudes[3][0] && longitud < rangosLongitudes[3][1]) //return 'e';
+			{
+				if (radio > rangosRadios[0][1] || radio < rangosRadios[0][0])
+					return 'e';
+				else 
+					return 'c';
+			}
+			return 'c';
+		}
+		if (longitud > rangosLongitudes[1][0] && longitud < rangosLongitudes[1][1]) //return 'b';
+		{
+			if (longitud > rangosLongitudes[2][0] && longitud < rangosLongitudes[2][1])//return 'u';
+			{
+				if (radio >= rangosRadios[2][0])
+					return 'u';
+				else 
+					return 'b';			
+			}
+			if (longitud > rangosLongitudes[3][0] && longitud < rangosLongitudes[3][1]) //return 'e';
+			{
+				if (radio >= rangosRadios[1][1])
+					return 'c';
+				else 
+					return 'e';
+			}
+			return 'b';
+		}
+		if (longitud > rangosLongitudes[2][0] && longitud < rangosLongitudes[2][1])//return 'u';
+		{
+			if (longitud > rangosLongitudes[3][0] && longitud < rangosLongitudes[3][1]) //return 'e';
+			{
+				if (radio >= rangosRadios[2][0])
+					return 'u';
+				else 
+					return 'e';	
+			}
 			return 'u';
+		}	
+		if (longitud > rangosLongitudes[3][0] && longitud < rangosLongitudes[3][1])//return 'e';
+			return 'e';
+		break;
+	case 2://4-9		
 		if (longitud > rangosLongitudes[4][0] && longitud < rangosLongitudes[4][1])
 			return '1';
-		if (longitud > rangosLongitudes[1][0] && longitud < rangosLongitudes[1][1])
-			return 'c';
-		break;
-	case 2://5-7
 		if (longitud > rangosLongitudes[5][0] && longitud < rangosLongitudes[5][1])
-			return 'b';
-		if (longitud > rangosLongitudes[7][0] && longitud < rangosLongitudes[7][1])
-			return 'r';
+		{					
+			if (longitud > rangosLongitudes[9][0] && longitud < rangosLongitudes[9][1]) //return 'd';
+			{
+				if (radio > rangosRadios[5][1])
+					return 'd';
+			}
+			return 'a';
+		}
 		if (longitud > rangosLongitudes[6][0] && longitud < rangosLongitudes[6][1])
-			return 'i';
-		break;
-	case 3://8-14			
-		if (longitud > rangosLongitudes[9][0] && longitud < rangosLongitudes[9][1])
-			return 'f';
-		if (longitud > rangosLongitudes[8][0] && longitud < rangosLongitudes[8][1])
-			return 'd';		
-		if (longitud > rangosLongitudes[14][0] && longitud < rangosLongitudes[14][1])
-			return 'w';
-		if (longitud > rangosLongitudes[13][0] && longitud < rangosLongitudes[13][1])
+		{				
+			if (longitud > rangosLongitudes[8][0] && longitud < rangosLongitudes[8][1]) //return i
+			{
+				if (radio <= rangosRadios[8][1])
+					return 'i';	
+			}
+			if (longitud > rangosLongitudes[9][0] && longitud < rangosLongitudes[9][1]) //return 'd';
+			{
+				if (radio <= rangosRadios[9][1])
+					return 'd';
+			}
 			return 'v';
-		if (longitud > rangosLongitudes[10][0] && longitud < rangosLongitudes[10][1])
-			return 'g';
-		if (longitud > rangosLongitudes[12][0] && longitud < rangosLongitudes[12][1])
-			return 'p';		
-		if (longitud > rangosLongitudes[11][0] && longitud < rangosLongitudes[11][1])
-			return 'l';
+		}
+		if (longitud > rangosLongitudes[7][0] && longitud < rangosLongitudes[7][1])
+		{
+			if (longitud > rangosLongitudes[8][0] && longitud < rangosLongitudes[8][1]) //return i
+			{
+				if (radio <= rangosRadios[8][1])
+					return 'i';	
+			}
+			if (longitud > rangosLongitudes[9][0] && longitud < rangosLongitudes[9][1]) //return 'd';
+			{
+				if (radio <= rangosRadios[9][1])
+					return 'd';
+			}
+			return 'r';
+		}
+		if (longitud > rangosLongitudes[8][0] && longitud < rangosLongitudes[8][1])
+		{
+			if (longitud > rangosLongitudes[9][0] && longitud < rangosLongitudes[9][1]) //return 'd';
+			{
+				if (radio < rangosRadios[8][0])
+					return 'd';
+			}
+			return 'i';		
+		}
+		if (longitud > rangosLongitudes[9][0] && longitud < rangosLongitudes[9][1])
+			return 'd';	
 		break;
-	case 4://15,16
+	case 3://10-15		
+		if (longitud > rangosLongitudes[10][0] && longitud < rangosLongitudes[10][1])
+			return 'f';
+		if (longitud > rangosLongitudes[11][0] && longitud < rangosLongitudes[11][1])
+		{
+			if (longitud > rangosLongitudes[12][0] && longitud < rangosLongitudes[12][1])
+			{
+				if (radio >= rangosRadios [12][0])
+					return 'w';
+			}
+			if (longitud > rangosLongitudes[13][0] && longitud < rangosLongitudes[13][1])
+				return 'l';
+			return 'l';
+		}
+		if (longitud > rangosLongitudes[13][0] && longitud < rangosLongitudes[13][1])
+			return 'p';
+		if (longitud > rangosLongitudes[14][0] && longitud < rangosLongitudes[14][1])
+			return 'g';
+		break;
+	case 4://16,17		
 		if (longitud > rangosLongitudes[15][0] && longitud < rangosLongitudes[15][1])
 			return 'h';
 		if (longitud > rangosLongitudes[16][0] && longitud < rangosLongitudes[16][1])
-			return '4';
-		break;
-	case 5://17,18
+		{
+			if (longitud > rangosLongitudes[17][0] && longitud < rangosLongitudes[17][1])
+			{
+				if (radio > rangosRadios[16][1])
+					return 'y';
+			}
+			return '3';
+		}
 		if (longitud > rangosLongitudes[17][0] && longitud < rangosLongitudes[17][1])
 			return 'y';
-		if (longitud > rangosLongitudes[18][0] && longitud < rangosLongitudes[18][1])
-			return '3';
 		break;
-	case 6://19;
+	case 5://18, 19
+	case 6:
+		if (longitud > rangosLongitudes[18][0] && longitud < rangosLongitudes[18][1] && numDef ==5)
+			return '4';			
 		if (longitud > rangosLongitudes[19][0] && longitud < rangosLongitudes[19][1])
 			return '5';
 		break;
